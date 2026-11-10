@@ -50,7 +50,8 @@ THEMES = {
     (10, 'announce'): dict(accent=(220, 110, 40), fx='leaf', cols=[(230, 130, 50), (210, 90, 40)], tag='秋'),
     (10, 'reminder'): dict(accent=(150, 90, 50), fx='leaf', cols=[(200, 140, 60)], tag='秋'),
     (11, 'announce'): dict(accent=(200, 60, 40), fx='maple', cols=[(215, 70, 45), (235, 150, 40)], tag='紅葉'),
-    (11, 'reminder'): dict(accent=(200, 60, 40), fx='maple', cols=[(200, 60, 40)], tag='紅葉'),
+    (11, 'reminder'): dict(accent=(190, 80, 30), fx='maple', cols=[(205, 65, 40), (230, 140, 40), (225, 185, 50)], tag='晩秋',
+                           bg=((253, 236, 214), (255, 250, 242)), deco=['momiji', 'kaki'], greet='〜 秋の夜長は焼肉で 〜', costume='imo'),
     (12, 'announce'): dict(accent=(40, 130, 80), fx='snow', cols=[(150, 185, 220)], tag='冬', bg=((222, 236, 248), (250, 252, 255)),
                            deco=['holly', 'tree', 'snowground'], greet='〜 Merry Christmas 〜', costume='santa'),
     (12, 'reminder'): dict(accent=(200, 50, 50), fx='star', cols=[(225, 180, 50)], tag='年の瀬', bg=((252, 238, 228), (255, 252, 248)),
@@ -230,7 +231,41 @@ def deco_kagami(d, t):
     d.ellipse(E(-26, -196, 26, -146), fill=(245, 150, 40))
     d.polygon([P(-4, -196), P(20, -214), P(10, -190)], fill=(60, 140, 60))
 
-DECO = dict(holly=deco_holly, tree=deco_tree, snowground=deco_snowground,
+def deco_momiji(d, t):
+    # 上のガーランド（紅葉の葉が並んでゆれる）
+    cols = [(205, 60, 40), (232, 140, 40), (225, 185, 50)]
+    pts_line = [(x, 64 + 26 * math.sin(x / 140)) for x in range(-20, W + 40, 20)]
+    d.line(pts_line, fill=(130, 85, 50), width=5)
+    for i in range(12):
+        x = 40 + i * 92
+        y = 64 + 26 * math.sin(x / 140) + 26
+        sw = math.sin(t * 2 + i) * 0.25
+        r = 30
+        pts = []
+        for j in range(10):
+            ang = -math.pi / 2 + sw + j * 2 * math.pi / 10
+            rr = r if j % 2 == 0 else r * 0.45
+            pts.append((x + rr * math.cos(ang), y + rr * math.sin(ang)))
+        d.polygon(pts, fill=cols[i % 3])
+        d.line([x, y - 24, x, y + 6], fill=(130, 85, 50), width=3)
+
+def deco_kaki(d, t):
+    # 右上の柿の枝
+    sw = math.sin(t * 1.4) * 4
+    OX, OY = 35, -25
+    d.line([(W + 10, 170 + OY), (990 + OX, 200 + OY), (930 + OX, 245 + OY), (880 + OX, 260 + OY)], fill=(110, 70, 40), width=14, joint='curve')
+    d.line([(990 + OX, 200 + OY), (960 + OX, 300 + OY)], fill=(110, 70, 40), width=9)
+    for (lx, ly, ang) in ((905 + OX, 225 + OY, -0.6), (1020 + OX, 160 + OY, 0.4)):
+        ux, uy = math.cos(ang), math.sin(ang); vx, vy = -uy, ux
+        d.polygon([(lx - ux * 40, ly - uy * 40), (lx + vx * 16, ly + vy * 16), (lx + ux * 40, ly + uy * 40), (lx - vx * 16, ly - vy * 16)], fill=(90, 140, 60))
+    for (fx_, fy, r) in ((880 + OX, 300 + OY, 44), (960 + OX, 352 + OY, 40), (1040 + OX - 10, 240 + OY, 38)):
+        fx_ += sw
+        d.ellipse([fx_ - r, fy - r * 0.9, fx_ + r, fy + r * 0.9], fill=(240, 130, 30), outline=(190, 90, 20), width=4)
+        d.ellipse([fx_ - r * 0.5, fy - r * 0.55, fx_ - r * 0.15, fy - r * 0.25], fill=(250, 190, 110))
+        d.polygon([(fx_ - 22, fy - r * 0.85), (fx_ + 22, fy - r * 0.85), (fx_, fy - r * 0.6)], fill=(70, 110, 50))
+        d.polygon([(fx_ - 6, fy - r * 1.05), (fx_ + 6, fy - r * 1.05), (fx_ + 14, fy - r * 0.7), (fx_ - 14, fy - r * 0.7)], fill=(70, 110, 50))
+
+DECO = dict(momiji=deco_momiji, kaki=deco_kaki, holly=deco_holly, tree=deco_tree, snowground=deco_snowground,
             mizuhiki=deco_mizuhiki, kadomatsu=deco_kadomatsu, kagami=deco_kagami)
 
 # ---------- セルン君 ----------
@@ -268,7 +303,7 @@ def kun(im, cx, cy, s, mo, blink, t, costume=None):
     oy_body = oy + int(PAD * s)
     im.paste(spr, (ox, oy), spr)
     d = ImageDraw.Draw(im)
-    for mx, ph in (() if costume == 'mochi' else ((300, 0.0),) if costume == 'santa' else ((300, 0.0), (510, 1.7))):
+    for mx, ph in (() if costume in ('mochi', 'imo') else ((300, 0.0),) if costume == 'santa' else ((300, 0.0), (510, 1.7))):
         for j in range(2):
             k = ((t * 0.9 + ph * 0.3 + j * 0.5) % 1.0)
             pts = [(ox + mx * s + math.sin(n * 0.55 + t * 3 + ph) * (6 + n * 1.3), oy_body + 40 * s - n * 9 - k * 60) for n in range(8)]
@@ -287,6 +322,23 @@ def costume_draw(d, kind, t, P):
         d.rounded_rectangle([335, P - 2, 685, P + 64], radius=30, fill=WHITE_, outline=INK, width=LW)
         r = 36
         d.ellipse([tip[0] - r, tip[1] - r, tip[0] + r, tip[1] + r], fill=WHITE_, outline=INK, width=LW)
+    elif kind == 'imo':
+        # 網の上で焼き芋。ひとつは割れて黄色い中身から湯気
+        for i, (mx, ph) in enumerate(((210, 0.0), (520, 1.1))):
+            by_ = P + 18 - (mx - 40) * 0.03
+            d.ellipse([mx - 125, by_ - 105, mx + 125, by_ + 10], fill=(150, 50, 90), outline=INK, width=10)
+            if i == 1:
+                d.ellipse([mx - 62, by_ - 88, mx + 62, by_ - 10], fill=(250, 205, 70), outline=INK, width=7)
+            else:
+                for k in (-50, 10, 60):
+                    d.arc([mx + k - 22, by_ - 80, mx + k + 22, by_ - 40], 200, 340, fill=(110, 30, 65), width=6)
+            d.line([mx - 124, by_ - 45, mx - 152, by_ - 56], fill=INK, width=9)
+            d.line([mx + 124, by_ - 45, mx + 154, by_ - 36], fill=INK, width=9)
+        for j in range(3):   # 湯気
+            k = ((t * 0.7 + j * 0.33) % 1.0)
+            pts = [(490 + j * 30 + math.sin(n * 0.6 + t * 3 + j) * (10 + n * 1.8), P - 90 - n * 16 - k * 70) for n in range(8)]
+            g = int(150 + 100 * k)
+            d.line(pts, fill=(g, g, g, 255), width=12, joint='curve')
     elif kind == 'mochi':
         # 網の上でお餅が焼けてぷくーっとふくらむ
         for i, (mx, ph) in enumerate(((190, 0.0), (520, 1.3))):
