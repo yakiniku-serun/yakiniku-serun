@@ -50,7 +50,8 @@ THEMES = {
     (10, 'announce'): dict(accent=(220, 110, 40), fx='leaf', cols=[(230, 130, 50), (210, 90, 40)], tag='秋'),
     (10, 'reminder'): dict(accent=(150, 90, 50), fx='leaf', cols=[(200, 140, 60)], tag='秋'),
     (11, 'announce'): dict(accent=(200, 60, 40), fx='maple', cols=[(215, 70, 45), (235, 150, 40)], tag='紅葉'),
-    (11, 'reminder'): dict(accent=(200, 60, 40), fx='maple', cols=[(200, 60, 40)], tag='紅葉'),
+    (11, 'reminder'): dict(accent=(185, 95, 40), fx='maple', cols=[(205, 70, 45), (230, 175, 40), (220, 120, 40)], tag='晩秋',
+                           bg=((250, 236, 214), (255, 251, 244)), deco=['leafgarland', 'imo'], greet='〜 秋の夜長は焼肉で 〜', costume='kuri', bgm='autumn'),
     (12, 'announce'): dict(accent=(40, 130, 80), fx='snow', cols=[(150, 185, 220)], tag='冬', bg=((222, 236, 248), (250, 252, 255)),
                            deco=['holly', 'tree', 'snowground'], greet='〜 Merry Christmas 〜', costume='santa'),
     (12, 'reminder'): dict(accent=(200, 50, 50), fx='star', cols=[(225, 180, 50)], tag='年の瀬', bg=((252, 238, 228), (255, 252, 248)),
@@ -230,7 +231,45 @@ def deco_kagami(d, t):
     d.ellipse(E(-26, -196, 26, -146), fill=(245, 150, 40))
     d.polygon([P(-4, -196), P(20, -214), P(10, -190)], fill=(60, 140, 60))
 
-DECO = dict(holly=deco_holly, tree=deco_tree, snowground=deco_snowground,
+def _leaf(d, x, y, r, ang, kind):
+    if kind == 'ginkgo':   # イチョウ（扇形）
+        a0 = ang - 0.75; a1 = ang + 0.75
+        pts = [(x, y)] + [(x + r * math.cos(a0 + (a1 - a0) * j / 10), y + r * math.sin(a0 + (a1 - a0) * j / 10)) for j in range(11)]
+        d.polygon(pts, fill=(235, 185, 40), outline=(190, 140, 20))
+        d.line([x, y, x - 0.5 * r * math.cos(ang), y - 0.5 * r * math.sin(ang)], fill=(150, 110, 30), width=4)
+    else:                  # もみじ（5枚の先）
+        pts = []
+        for j in range(10):
+            rr = r if j % 2 == 0 else r * 0.45
+            a = ang + j * math.pi / 5
+            pts.append((x + rr * math.cos(a), y + rr * math.sin(a)))
+        d.polygon(pts, fill=(210, 65, 45), outline=(160, 40, 30))
+
+def deco_leafgarland(d, t):
+    # 上のひもにイチョウともみじが揺れる
+    pts = [(x, 60 + 26 * math.sin(x / 160 + 0.6)) for x in range(-20, W + 40, 20)]
+    d.line(pts, fill=(140, 95, 55), width=5)
+    for i in range(12):
+        x = 40 + i * 92; y = 60 + 26 * math.sin(x / 160 + 0.6)
+        sw = math.sin(t * 2.0 + i) * 0.25
+        _leaf(d, x, y + 22, 30, math.pi / 2 + sw, 'ginkgo' if i % 2 == 0 else 'maple')
+
+def deco_imo(d, t):
+    # 右上：ふたつに割った焼き芋から湯気
+    cy = 410
+    for sgn, cx in ((-1, 930), (1, 1000)):
+        tip = (cx + sgn * 62, cy + sgn * 8)
+        cut = cx - sgn * 18
+        pts = [(cut, cy - 38), (cx + sgn * 22, cy - 36), tip, (cx + sgn * 22, cy + 34), (cut, cy + 36)]
+        d.polygon(pts, fill=(150, 55, 95), outline=INK, width=6)
+        d.ellipse([cut - 17, cy - 38, cut + 17, cy + 36], fill=(250, 205, 70), outline=INK, width=5)
+    for j, ox in enumerate((945, 985)):
+        k = (t * 0.7 + j * 0.5) % 1.0
+        g = int(150 + 100 * k)
+        pts = [(ox + math.sin(n * 0.6 + t * 3 + j) * (5 + n), cy - 50 - n * 10 - k * 50) for n in range(8)]
+        d.line(pts, fill=(g, g, g), width=5, joint='curve')
+
+DECO = dict(leafgarland=deco_leafgarland, imo=deco_imo, holly=deco_holly, tree=deco_tree, snowground=deco_snowground,
             mizuhiki=deco_mizuhiki, kadomatsu=deco_kadomatsu, kagami=deco_kagami)
 
 # ---------- セルン君 ----------
@@ -268,7 +307,7 @@ def kun(im, cx, cy, s, mo, blink, t, costume=None):
     oy_body = oy + int(PAD * s)
     im.paste(spr, (ox, oy), spr)
     d = ImageDraw.Draw(im)
-    for mx, ph in (() if costume == 'mochi' else ((300, 0.0),) if costume == 'santa' else ((300, 0.0), (510, 1.7))):
+    for mx, ph in (() if costume in ('mochi', 'kuri') else ((300, 0.0),) if costume == 'santa' else ((300, 0.0), (510, 1.7))):
         for j in range(2):
             k = ((t * 0.9 + ph * 0.3 + j * 0.5) % 1.0)
             pts = [(ox + mx * s + math.sin(n * 0.55 + t * 3 + ph) * (6 + n * 1.3), oy_body + 40 * s - n * 9 - k * 60) for n in range(8)]
@@ -287,6 +326,17 @@ def costume_draw(d, kind, t, P):
         d.rounded_rectangle([335, P - 2, 685, P + 64], radius=30, fill=WHITE_, outline=INK, width=LW)
         r = 36
         d.ellipse([tip[0] - r, tip[1] - r, tip[0] + r, tip[1] + r], fill=WHITE_, outline=INK, width=LW)
+    elif kind == 'kuri':
+        # 網の上で栗が焼けて、順番にぴょんと跳ねる
+        for i, (mx, ph) in enumerate(((170, 0.0), (360, 0.9), (550, 1.8))):
+            base_y = P + 78 - (mx - 40) * 0.05
+            cyc = ((t + ph) % 2.7) / 2.7
+            jump = math.sin(cyc / 0.25 * math.pi) * 60 if cyc < 0.25 else 0
+            y = base_y - jump
+            body = [(mx - 70, y), (mx + 70, y), (mx + 60, y - 58), (mx, y - 104), (mx - 60, y - 58)]
+            d.polygon(body, fill=(130, 75, 40), outline=INK, width=8)
+            d.chord([mx - 72, y - 40, mx + 72, y + 30], 0, 180, fill=(225, 195, 140), outline=INK, width=8)
+            d.line([mx - 20, y - 70, mx - 6, y - 82], fill=(185, 130, 85), width=6)   # つや
     elif kind == 'mochi':
         # 網の上でお餅が焼けてぷくーっとふくらむ
         for i, (mx, ph) in enumerate(((190, 0.0), (520, 1.3))):
@@ -343,7 +393,7 @@ def calendar(d, top, start, end, shown, opens, final, accent, compact, holis):
     return top + 90 + (rows - 1) * ch + 60
 
 # ---------- BGM（自作・著作権フリー） ----------
-def make_bgm(path, sec=SEC, seed=0):
+def make_bgm(path, sec=SEC, seed=0, style=None):
     import numpy as np, wave
     sr = 44100
     n = int(sr * sec)
@@ -351,6 +401,8 @@ def make_bgm(path, sec=SEC, seed=0):
     bpm = 112; beat = 60 / bpm
     prog = [[60, 64, 67], [57, 60, 64], [65, 69, 72], [67, 71, 74]]   # C Am F G
     mel_pat = [[0, 2, 1, 2], [2, 1, 0, 1], [0, 1, 2, 3], [2, 1, 2, 0]]
+    if style == 'autumn':
+        return _bgm_autumn(path, sec, seed)
     rng = np.random.default_rng(seed)
     def tone(f, dur, amp, kind='bell'):
         t = np.arange(int(sr * dur)) / sr
@@ -376,6 +428,52 @@ def make_bgm(path, sec=SEC, seed=0):
             if rng.random() < 0.82:
                 m = ch[pat[k % 4] % 3] + (12 if pat[k % 4] == 3 else 0) + 12
                 add(tone(mf(m), beat * 0.7, 0.16), t + k * beat / 2)
+        t += bar; b += 1
+    fade = np.minimum(1, np.minimum(np.arange(n) / (sr * 0.5), (n - np.arange(n)) / (sr * 1.2)))
+    out = out * fade
+    out = out / max(1e-9, np.abs(out).max()) * 0.5
+    pcm = (out * 32767).astype('<i2')
+    with wave.open(path, 'wb') as w:
+        w.setnchannels(1); w.setsampwidth(2); w.setframerate(sr); w.writeframes(pcm.tobytes())
+
+def _bgm_autumn(path, sec, seed):
+    # 晩秋：ゆったりしたマリンバ＋ウッドベース＋シェイカー（F→Dm→B♭→C）
+    import numpy as np, wave
+    sr = 44100; n = int(sr * sec); out = np.zeros(n)
+    beat = 60 / 92
+    prog = [[65, 69, 72], [62, 65, 69], [58, 62, 65], [60, 64, 67]]
+    mel = [[2, 1, 0, None, 1, 2, 3, None], [2, None, 1, 0, 1, None, 0, None],
+           [1, 2, 3, None, 2, 1, None, 0], [0, 1, 2, None, 3, None, 2, None]]
+    mf = lambda m: 440 * 2 ** ((m - 69) / 12)
+    def add(sig, at):
+        i = int(at * sr); j = min(n, i + len(sig))
+        if i < n: out[i:j] += sig[:j - i]
+    def marimba(f, dur, amp):
+        t = np.arange(int(sr * dur)) / sr
+        w = np.sin(2 * np.pi * f * t) + 0.25 * np.sin(2 * np.pi * f * 4 * t) * np.exp(-t * 30)
+        return amp * w * np.exp(-t * 6) * np.minimum(1, t / 0.004)
+    def bass(f, dur, amp):
+        t = np.arange(int(sr * dur)) / sr
+        w = np.sin(2 * np.pi * f * t) + 0.3 * np.sin(2 * np.pi * f * 2 * t)
+        return amp * w * np.exp(-t * 3.5) * np.minimum(1, t / 0.01)
+    rng = np.random.default_rng(seed)
+    def shaker(amp):
+        t = np.arange(int(sr * 0.06)) / sr
+        return amp * rng.standard_normal(len(t)) * np.exp(-t * 70)
+    bar = beat * 4; t = 0.0; b = 0
+    while t < sec:
+        ch = prog[b % 4]
+        add(bass(mf(ch[0] - 24), beat * 1.8, 0.35), t)
+        add(bass(mf(ch[2] - 24), beat * 1.8, 0.28), t + beat * 2)
+        for k in (1, 3):
+            for m in ch: add(marimba(mf(m - 12), beat, 0.05), t + k * beat)
+        for k in range(8):
+            sw = 0.06 if k % 2 else 0.0                                       # 少しはねる
+            add(shaker(0.025 if k % 2 else 0.04), t + k * beat / 2 + sw * beat)
+            idx = mel[b % 4][k]
+            if idx is not None:
+                m = ch[idx % 3] + (12 if idx == 3 else 0) + 12
+                add(marimba(mf(m), beat * 0.9, 0.17), t + k * beat / 2 + sw * beat)
         t += bar; b += 1
     fade = np.minimum(1, np.minimum(np.arange(n) / (sr * 0.5), (n - np.arange(n)) / (sr * 1.2)))
     out = out * fade
@@ -487,7 +585,7 @@ def render(cfg, out):
                 ctext(d, yy, 'ご予約はLINEから ／ TEL 078-927-0021', font(34, False), INK)
         im.save(os.path.join(tmp, f'{fi:04d}.png'))
         if fi in (60, 200, 330, 420): im.save(out.replace('.mp4', f'_check{fi}.png'))
-    bgm = os.path.join(tmp, 'bgm.wav'); make_bgm(bgm, seed=start.toordinal())
+    bgm = os.path.join(tmp, 'bgm.wav'); make_bgm(bgm, seed=start.toordinal(), style=th.get('bgm'))
     subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-framerate', str(FPS), '-i', os.path.join(tmp, '%04d.png'),
                     '-i', bgm, '-shortest',
                     '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-profile:v', 'high', '-crf', '20', '-movflags', '+faststart',
